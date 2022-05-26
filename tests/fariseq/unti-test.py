@@ -170,7 +170,7 @@ if __name__ == "__main__":
         for layer in model.layers
     ]
 
-def testLoweringTransformerDecoderToFairSeqNVFasterTransformerDecoder(self):
+def testLoweringTransformerDecoderToFairSeqNVFasterTransformerDecoder():
         encoder = build_dummy_encoder(encoder_normalize_before=True)
         decoder = build_dummy_decoder()
         encoder = encoder.cuda().half().eval()
