@@ -23,10 +23,16 @@ def init_op_cache(layer_num, batch_size, beam_width, max_seq_len, \
     size_per_head = 32
     use_batch_major_op_cache = True
     if use_batch_major_op_cache == True:
-        self_cache = [ torch.zeros(layer_num, batch_size * beam_width, head_num, size_per_head // x, 
+        self_cache = [ torch.zeros(batch_size,head_num,size_per_head // x, 
                                    decoding_max_seq_len, x, dtype=dtype, device='cuda'),
-                       torch.zeros(layer_num, batch_size * beam_width, head_num, 
-                                   decoding_max_seq_len, size_per_head, dtype=dtype, device='cuda') ]
+                       torch.zeros(batch_size,head_num,size_per_head // x, 
+                                   decoding_max_seq_len, x, dtype=dtype, device='cuda') ]
+        
+
+        # self_cache = [ torch.zeros(layer_num, batch_size * beam_width, head_num, size_per_head // x, 
+        #                            decoding_max_seq_len, x, dtype=dtype, device='cuda'),
+        #                torch.zeros(layer_num, batch_size * beam_width, head_num, 
+        #                            decoding_max_seq_len, size_per_head, dtype=dtype, device='cuda') ]
     else:
         self_cache = [ torch.zeros(layer_num, 0, batch_size * beam_width, hidden_dim, dtype=dtype, device='cuda'),
                        torch.zeros(layer_num, 0, batch_size * beam_width, hidden_dim, dtype=dtype, device='cuda') ]
