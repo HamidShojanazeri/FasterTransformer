@@ -18,21 +18,20 @@ torch.classes.load_library(faster_transformer_complied_path)
 
 def init_op_cache(layer_num, batch_size, beam_width, max_seq_len, \
                   decoding_max_seq_len, head_num, size_per_head, hidden_dim):
-    dtype = torch.float32
+    dtype = torch.float16
     x = 4
     size_per_head = 32
     use_batch_major_op_cache = True
     if use_batch_major_op_cache == True:
-        self_cache = [ torch.zeros(batch_size,head_num,size_per_head // x, 
-                                   decoding_max_seq_len, x, dtype=dtype, device='cuda'),
-                       torch.zeros(batch_size,head_num,size_per_head // x, 
-                                   decoding_max_seq_len, x, dtype=dtype, device='cuda') ]
-        
 
-        # self_cache = [ torch.zeros(layer_num, batch_size * beam_width, head_num, size_per_head // x, 
+        # self_cache = [ torch.zeros(batch_size,head_num,size_per_head // x, 
         #                            decoding_max_seq_len, x, dtype=dtype, device='cuda'),
-        #                torch.zeros(layer_num, batch_size * beam_width, head_num, 
-        #                            decoding_max_seq_len, size_per_head, dtype=dtype, device='cuda') ]
+        #                torch.zeros(batch_size,head_num,size_per_head // x, 
+        #                            decoding_max_seq_len, x, dtype=dtype, device='cuda') ]
+        self_cache = [ torch.zeros(layer_num, batch_size * beam_width, head_num, size_per_head // x, 
+                                   decoding_max_seq_len, x, dtype=dtype, device='cuda'),
+                       torch.zeros(layer_num, batch_size * beam_width, head_num, 
+                                   decoding_max_seq_len, size_per_head, dtype=dtype, device='cuda') ]
     else:
         self_cache = [ torch.zeros(layer_num, 0, batch_size * beam_width, hidden_dim, dtype=dtype, device='cuda'),
                        torch.zeros(layer_num, 0, batch_size * beam_width, hidden_dim, dtype=dtype, device='cuda') ]
@@ -308,7 +307,7 @@ class FairSeqNVFasterTransformerDecoder(FairseqIncrementalDecoder):
             assert temp is not None
             caches = temp
 
-            for i in range(self.layer_num):
+            for i in range(self.num_layers):
                 cache_0 = caches[f"cache_{i}_0"]
                 cache_1 = caches[f"cache_{i}_1"]
                 assert cache_0 is not None
@@ -349,7 +348,8 @@ class FairSeqNVFasterTransformerDecoder(FairseqIncrementalDecoder):
             # sequence_lengths = caches
             # print("src_lengths", src_lengths)
             sequence_lengths = torch.ones(bs, dtype=torch.int32).cuda() * step
-            print("x,memory, memory_seq_lens, sequence_lengths, cache_0, cache_1, mem_cache[0], mem_cache[1] ",x.size(),memory.size(), memory_seq_lens.size(), sequence_lengths.size(), self_cache[0].size(), self_cache[0].size(), mem_cache[0].size(), mem_cache[1].size() )
+            # print("x,memory, memory_seq_lens, sequence_lengths, cache_0, cache_1, mem_cache[0], mem_cache[1] ",x.size(),memory.size(), memory_seq_lens.size(), sequence_lengths.size(), self_cache[0].size(), self_cache[0].size(), mem_cache[0].size(), mem_cache[1].size() )
+            print(" cache_0, cache_1", self_cache[0].size())
             x = layer.forward( step,
                 x,
                 memory,
@@ -359,9 +359,10 @@ class FairSeqNVFasterTransformerDecoder(FairseqIncrementalDecoder):
                 self_cache[1],
                 mem_cache[0],
                 mem_cache[1]
-            )
+            )[0]
+            
             inner_states.append(x.transpose(0, 1))
-
+            print( " ******** layer processed *********", i )
         x = self.layer_norm(x)
         x = self.output_projection(x)
         return x, {"attn": [attn], "inner_states": inner_states}
